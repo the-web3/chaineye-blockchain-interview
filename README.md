@@ -14,7 +14,7 @@
 #### 3. [NodeJs]()
 #### 4. [共识算法]()
 #### 5. [以太坊]()
-#### 6. [solidity]()
+#### 6. [solidity](https://github.com/0xchaineye/chaineye-blockchain-interview/blob/main/06-solidity/readme.md)
 #### 7. [golang]()
 #### 8. [rust]()
 #### 9. [layer2]()
