@@ -1,11 +1,24 @@
 # 链眼社区区块链面试题汇集
 
-.： 
-    ![.： 
-](/images/pic_chang.png)
+
+最近项目在招聘人员，面试了很多区块链工程师，感觉大家都无法抓住面试的要点，本教程主要是整理一些区块链中的面试思路和面试题目, 本教程由链眼社区出品
 
 
-最近项目在招聘人员，面试了很多区块链工程师，感觉大家都无法抓住面试的要点，本教程主要是整理一些区块链中的面试思路和面试题目。
+[![savourlabs](images/pic_chang.png)](https://github.com/savour-labs)
+
+
+### 教程目录
+
+#### 1. [计算基础](https://github.com/0xchaineye/chaineye-blockchain-interview/blob/main/01-computer-basics/readme.md)
+#### 2. [数据结构与算法]()
+#### 3. [NodeJs]()
+#### 4. [共识算法]()
+#### 5. [以太坊]()
+#### 6. [solidity]()
+#### 7. [golang]()
+#### 8. [rust]()
+#### 9. [layer2]()
+#### 10. [零知识证明]()
 
 
 ### 联系作者
