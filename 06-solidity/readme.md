@@ -1,5 +1,17 @@
 # solidity
 
+
+Chaineye  面试题汇集，供想要学习的小伙伴学习。
+
+推特：@seek_web3
+
+Chainey 社群： 官网 chaineye.info | Chaineye Rust 教程 | 微信: LGZAXE, 加微信之后拉各社群 
+
+所有代码和教程开源在github: https://github.com/0xchaineye/chaineye-blockchain-interview
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 ## 1. 在实际生产中，如果想要保证测试网和主网的合约地址一致，应当怎么做
 
 合约地址是由 nonce 和 address 决定的，所以只要保证 nonce 和 address 一样即可.
