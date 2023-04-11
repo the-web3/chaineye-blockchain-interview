@@ -1,7 +1,7 @@
 # solidity
 
 
-Chaineye  面试题汇集，供想要学习的小伙伴学习。
+Chaineye  solidity 面试题汇集，供想要学习的小伙伴学习。
 
 推特：@seek_web3
 
