@@ -210,6 +210,67 @@ ERC-1559提出了一种基于区块空间占用和市场需求的新交易费用
 ### 12. 简要说明 EIP4484 作用
 
 
+### 14.solidity staticcall 的原理与作用
+
+Solidity的staticcall方法是一种用于在以太坊虚拟机（EVM）上执行不改变状态的外部智能合约的方法。下面是staticcall方法的底层代码实现：
+
+```
+function staticcall(
+  address target,
+  bytes memory data
+) internal view returns (bool success, bytes memory returnData) {
+  assembly {
+    let result := staticcall(gas(), target, add(data, 0x20), mload(data), 0, 0)
+    let size := returndatasize()
+    returnData := mload(0x40) // allocate new memory
+    mstore(0x40, add(returnData, and(add(add(size, 0x20), 0x1f), not(0x1f)))) // round up to nearest 32 bytes
+    mstore(returnData, size) // set length of returned data
+    returndatacopy(add(returnData, 0x20), 0, size)
+    success := and(result, not(iszero(size)))
+  }
+}
+```
+这个实现使用了EVM汇编代码。首先，staticcall函数将目标地址和要执行的字节码作为输入参数。然后，它通过使用staticcall指令在EVM上执行外部智能合约。这个指令接受五个参数：gas限制、目标地址、输入数据的起始位置、输入数据的长度和输出数据的起始位置。这个函数没有改变调用者的状态。
+
+在assembly块内，staticcall指令的结果保存在result变量中。然后，returndatasize指令用于获取返回数据的长度。接下来，这个实现通过使用EVM汇编代码来分配新内存、设置返回数据的长度和复制返回数据。最后，它将成功的状态和返回数据作为输出返回给调用者。
+
+总体来说，这个底层实现使用了EVM汇编代码，它使用了一些指令来处理外部智能合约的调用和返回数据的处理，以便实现staticcall方法。
+
+Solidity中的staticcall函数是一种特殊类型的函数调用，它允许在以太坊虚拟机上执行一个不修改状态的智能合约函数。它的作用是查询一个智能合约中的数据或计算某个状态而不会改变区块链上的状态。
+
+在staticcall函数中，虚拟机会创建一个新的临时账户并将调用数据传递给该账户。然后，该账户的代码将被执行，但是无法修改状态或者调用具有状态变更的函数。这个过程不会消耗gas，因为没有状态变更。
+
+staticcall函数的返回值是一个布尔值，用来表示调用是否成功。如果成功，将返回该函数的返回值，否则返回一个空的字节数组。
+
+staticcall的常用场景是从智能合约中读取数据。例如，当需要在一个合约中获取另一个合约的某些数据时，可以使用staticcall函数来查询数据，而不必调用具有状态变更的函数，这样可以避免额外的gas费用和状态变更。
+
+
+### 15. solidity 中 assembly 原理与作用
+
+Solidity是一种高级编程语言，用于编写智能合约。它基于EVM（以太坊虚拟机）的字节码指令集，但是有时候需要进行更底层的操作，这时候就可以使用Solidity中的Assembly语言。
+
+Assembly是一种低级语言，它直接操作EVM指令集。Solidity中的Assembly可以用来执行一些高级操作，比如内联汇编，也可以用来访问合约存储空间和进行低级别的内存操作。此外，Assembly还可以用于优化代码和执行一些高级加密算法等。
+
+Solidity中的Assembly代码可以通过在函数声明中使用"assembly"关键字来定义。Assembly代码使用一种类似于汇编语言的语法，并使用特定的指令集来操作EVM。Assembly语言还可以直接读写内存和存储器，以及进行其他底层操作。
+
+总之，Solidity中的Assembly可以提供更高级别的操作和更佳的性能，但它也需要更多的编写经验和技能，因为它需要直接操作EVM指令集。对于大多数智能合约，Solidity的高级语言已经足够，不需要使用Assembly。
+
+### 16. 如何避免让合约处于未初始化状态。
+
+攻击者可以接管未初始化的合约。这适用于代理及其实施合同，这可能会影响代理。为了防止使用实现契约，您应该_disableInitializers在构造函数中调用函数以在部署时自动锁定它：
+
+/// @custom:oz-upgrades-unsafe-allow constructor
+constructor() {
+    _disableInitializers();
+}
+
+
+
+
+
+
+
+
 
 
 
