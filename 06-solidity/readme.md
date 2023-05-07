@@ -259,11 +259,12 @@ Solidity中的Assembly代码可以通过在函数声明中使用"assembly"关键
 
 攻击者可以接管未初始化的合约。这适用于代理及其实施合同，这可能会影响代理。为了防止使用实现契约，您应该_disableInitializers在构造函数中调用函数以在部署时自动锁定它：
 
+```
 /// @custom:oz-upgrades-unsafe-allow constructor
 constructor() {
     _disableInitializers();
 }
-
+```
 
 
 
