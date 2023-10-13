@@ -14,7 +14,28 @@ Chainey 社群： 官网 chaineye.info | Chaineye Rust 教程 | 微信: LGZAXE, 
 
 ## 1. 在实际生产中，如果想要保证测试网和主网的合约地址一致，应当怎么做
 
-合约地址是由 nonce 和 address 决定的，所以只要保证 nonce 和 address 一样即可.
+方案一：合约地址是由 nonce 和 address 决定的，所以只要保证 nonce 和 address 一样即可.
+```
+new_address = hash(sender, nonce)
+```
+方案二：使用 create2, 该操作码背后的整体思想是使结果地址独立于未来事件。无论区块链上发生什么，总是可以将合约部署在预先计算的地址上。
+
+新地址是以下函数的函数：
+
+0xFF，一个防止与碰撞的常数CREATE
+
+发件人自己的地址
+
+盐（发送者提供的任意值）
+
+待部署合约的字节码
+
+```
+new_address = hash(0xFF, sender, salt, bytecode)
+```
+CREATE2保证如果使用和提供的sender进行部署，它将存储在.bytecodeCREATE2saltnew_address
+
+因为bytecode包含在此计算中，所以其他代理可以依赖这样一个事实：如果合约曾经部署到 new_address，那么它将是他们所知道的。这是反事实部署背后的关键概念。
 
 ## 2.solidity智能合约的 pure 与 view 使用原理及场景
 
