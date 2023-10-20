@@ -241,34 +241,120 @@ caller, callee之间的关系就像是employer和employee之间的关系，就�
 主要分为三层，应用app >> V8及node内置架构 >> 操作系统. V8是node运行的环境，可以理解为node虚拟机．node内置架构又可分为三层: 核心模块(javascript实现) >> c++绑定 >> libuv + CAes + http.
 
 
-coming soon
+## 12. js 的 apply, call 和 bind 有什么区别?
 
-## 第二部分： node 常用后端开发框架
+三者都可以把一个函数应用到其他对象上，注意不是自身对象．apply,call是直接执行函数调用，bind是绑定，执行需要再次调用．apply和call的区别是apply接受数组作为参数，而call是接受逗号分隔的无限多个参数列表，
 
-coming soon
+```
+function Person() {}
+Person.prototype.sayName() { alert(this.name); }
 
-## 第三部分： 数据库
+var obj = {name: 'michaelqin'}; // 注意这是一个普通对象，它不是Person的实例
+1) apply
+Person.prototype.sayName.apply(obj, [param1, param2, param3]);
 
-coming soon
+2) call
+Person.prototype.sayName.call(obj, param1, param2, param3);
+
+3) bind
+var sn = Person.prototype.sayName.bind(obj);
+sn([param1, param2, param3]); // bind需要先绑定，再执行
+sn(param1, param2, param3); // bind需要先绑定，再执行
+```
+
+## 13. caller,callee 和 arguments分别是什么
+caller, callee 之间的关系就像是 employer和 employee之间的关系，就是调用与被调用的关系，二者返回的都是函数对象引用．arguments是函数的所有参数列表，它是一个类数组的变量．
+```
+function parent(param1, param2, param3) {
+	child(param1, param2, param3);
+}
+
+function child() {
+	console.log(arguments); // { '0': 'mqin1', '1': 'mqin2', '2': 'mqin3' }
+	console.log(arguments.callee); // [Function: child]
+	console.log(child.caller); // [Function: parent]
+}
+
+parent('mqin1', 'mqin2', 'mqin3');
+```
+
+## 13. ES 的 MAP 和 SET 的区别
+
+JavaScript的默认对象表示方式{}可以视为其他语言中的Map或Dictionary的数据结构，即一组键值对。但是JavaScript的对象有个小问题，就是键必须是字符串。但实际上Number或者其他数据类型作为键也是非常合理的。为了解决这个问题，最新的ES6规范引入了新的数据类型Map。
+
+Map 是一组键值对的结构，具有极快的查找速度。
+
+Set 和 Map 类似，也是一组key的集合，但不存储value。由于key不能重复，所以，在Set中，没有重复的key。
+
+## 14. 简单说一下 set，WeakSet, map，WeakMap 功能作用
+
+##### Set：
+
+- 成员唯一、有序且不重复。
+- [value, value]，键值与键名是一致的（或者说只有键值，没有键名）。
+- 可以遍历，方法有：add、delete、has。
+
+##### WeakSet：
+
+- 成员都是对象。
+- 成员都是弱引用，可以被垃圾回收机制回收，可以用来保存DOM节点，不容易造成内存泄漏。
+- 不能遍历，方法有add、delete、has。
+
+##### Map：
+
+- 本质上是键值对的集合，类似集合。
+- 可以遍历，方法很多可以跟各种数据格式转换。
+
+##### WeakMap：
+
+- 只接受对象作为键名（null除外），不接受其他类型的值作为键名。
+- 键名是弱引用，键值可以是任意的，键名所指向的对象可以被垃圾回收，此时键名是无效的。
+- 不能遍历，方法有get、set、has、delete。
+
+## 15. JS 的闭包，设计模式等
+这里不写答案了，比较简单
 
 
-## 第三部分： node 与 区块链
-
-coming soon
+## 16. nodeJS 最大内存限制是多大，如果正常开发的项目出现内部问题，怎么解决
 
 
+## 第二部分：Vue, React 与 包管理
+
+## 第三部分： node 常用后端开发框架
+
+### 1.使用过什么 node 后端开发框架, 分别说一下他们的工作流
+
+### 2.接口权限验证有哪些方式
+
+### 3.restapi, websocket api, rpc, graphql 接口使用场景
+
+### 4.如何在后端解决跨越问题
 
 
+## 第四部分： 数据库
+
+### 1.写链表查询 sql 
+
+### 2.数据库常见的优化方式有哪些
+
+### 3.什么情况下会出现数据库死锁
+
+### 4.mysql 数据分析工具有哪些，怎么操作
+
+### 6.可以简单描述一下数据库主从在工程实战中怎么实现吗
+
+### 7. mongoDB 和 mysql 的区别，实际工作中怎么选择数据库
 
 
+## 第五部分： node 与 区块链
 
+### 1.请用 nodejs 写一段合约事件监听的代码
 
+### 2.请用 nodejs 比特币以太坊地址生成与离线签名
 
+### 3.请用 nodejs 比特币以太坊地址生成与离线签名
 
-
-
-
-
+### 4. DAPP 浏览器实现方式有那些，底层原理是什么
 
 
 
