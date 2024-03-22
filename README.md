@@ -27,10 +27,10 @@
 
 ### 联系 savour 社区
 
-- 邮箱：guoshijiang2012@163.com
-- 微信：LGZAXE
-- discord: https://discord.gg/WW86tqEw
-- telegram: @shijiangguo
-- Twitter: @seek_web3
+- 邮箱：0xsavourlabs@gmail.com
+- github：https://github.com/savour-community
+- discord: https://discord.gg/8UBpm7yJsJ
+- telegram: https://t.me/+pmoh3D4uTAFjNWM1
+- Twitter: https://twitter.com/0xsavour
 
 
