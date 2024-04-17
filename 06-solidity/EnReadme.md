@@ -48,9 +48,8 @@ pure: can also be called freely, neither reading nor writing to the blockchain
 
 ### 3. How to convert fixed byte array to dynamic byte array
 To convert a fixed-length byte array into a dynamic-length byte array, you need to first create a dynamic array and assign values ​​one by one.
-
+```
 pragma solidity ^0.4.23;
-
 contract fixTodynamic{
        bytes6 name = 0x6a6f6e736f6e;
 
@@ -65,6 +64,8 @@ contract fixTodynamic{
          return newName;
      }
 }
+```
+
 ### 4. Briefly explain the characteristics and differences of the constructor and initialization function of smart contracts.
 The constructor is a special function that will be called when deploying the contract. And can only be called at this time. Often used to initialize certain state variables. The initialization function is to initialize the contract and can only be called at one level.
 
@@ -180,7 +181,7 @@ Set multiple addresses as guardians. Once the private key of the EOA wallet cont
 ### 16. Briefly explain the function of EIP4484
 ### 17.The principle and function of solidity staticcall
 Solidity's staticcall method is a method for executing external smart contracts on the Ethereum Virtual Machine (EVM) that does not change state. The following is the underlying code implementation of the staticcall method:
-
+```
 function staticcall(
    address target,
    bytes memory data
@@ -195,6 +196,7 @@ function staticcall(
      success := and(result, not(iszero(size)))
    }
 }
+```
 This implementation uses EVM assembly code. First, the staticcall function takes the target address and the bytecode to be executed as input parameters. Then, it executes the external smart contract on the EVM by using the staticcall instruction. This instruction accepts five parameters: gas limit, target address, starting position of input data, length of input data, and starting position of output data. This function does not change the caller's state.
 
 Within the assembly block, the result of the staticcall instruction is saved in the result variable. Then, the returndatasize instruction is used to get the length of the returned data. Next, this implementation uses EVM assembly code to allocate new memory, set the length of the return data, and copy the return data. Finally, it returns the success status and return data to the caller as output.
