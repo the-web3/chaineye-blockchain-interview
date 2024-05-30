@@ -190,8 +190,41 @@ UTXO:
 ## 20.解释一下什么是 EVM 同源链，举例说明一下
 
 
-
 ## 21.ERC721 和 ERC1155 区别与联系
+
+
+## 22. Cosmos 共识算法是什么
+
+
+
+## 23. Cosmos 钱包资金精度
+
+
+
+## 24. Cosmos 签名结构中的 account_number 和 seqence 怎么获取
+
+
+
+
+## 25. memo 是什么，在中心化钱包开发中有什么作用，请举例说明那些链带有 Memo, Memo 另一个名字是什么
+
+
+
+
+## 26. 简述 Cosmos 的 Interchain Security 和 IBC Protocol
+
+
+
+## 27. cosmos-sdk 的应用场景
+
+
+
+
+
+
+
+
+
 
 
 
