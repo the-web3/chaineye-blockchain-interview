@@ -13,3 +13,6 @@ tokio 是一个异步编程框架，提供了用于异步 I/O 操作的基础设
 native-tls 和 rustls 都是 Rust 中用于 TLS 加密和解密的库。它们的主要区别在于，native-tls 使用操作系统的本地 TLS 库，例如 OpenSSL，而 rustls 是一个纯 Rust 实现的 TLS 库。在实际使用中，如果需要更高的性能和对操作系统 TLS 库的依赖度较低，可以选择 rustls；如果需要更广泛的兼容性和对操作系统 TLS 库的支持，可以选择 native-tls。
 
 总的来说，async-std、tokio、actix、native-tls、rustls 这些库和框架都是 Rust 中非常常用的工具，用于异步编程和网络编程。它们之间的区别和联系需要根据具体的使用场景和需求来选择。
+
+
+## 2. 简单说明可变变量以及不可变变量
