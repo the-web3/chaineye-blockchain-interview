@@ -16,6 +16,7 @@ native-tls 和 rustls 都是 Rust 中用于 TLS 加密和解密的库。它们�
 
 
 ## 第一课：Rust语言基础知识部分
+
 ### 1. 简单说明可变变量以及不可变变量
 
 *解答：* 
@@ -135,8 +136,8 @@ fn bubble_sort(arr: &mut [i32], ascending: bool)  {
 
 ## 第二课： 所有权与借用
 ### 6. 掌握所有权与借用的内涵，建议阅读以下文章：
-[](https://mp.weixin.qq.com/s/2aM6TQprVoZAjY0PY75g4A)
-[](https://mp.weixin.qq.com/s/kUDc9xr_a-51RCmg_pg-FA)
+[欲知山中事，须问打柴人](https://mp.weixin.qq.com/s/2aM6TQprVoZAjY0PY75g4A)
+[不以规矩，不能成方圆](https://mp.weixin.qq.com/s/kUDc9xr_a-51RCmg_pg-FA)
 
 ### 7. 分析下面三段代码，回答能不能通过编译？并分别说明原因。
 #### 1. 代码一
