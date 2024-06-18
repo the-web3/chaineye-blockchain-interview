@@ -116,9 +116,12 @@ fn bubble_sort(arr: &mut [i32], ascending: bool)  {
     for i in 0..len - 1 {
         for j in 0..len - i - 1 {
             if (ascending && arr[j] > arr[j + 1]) || (!ascending && arr[j] < arr[j + 1]) {
+                /*
                 let tmp = arr[j];
                 arr[j] = arr[j + 1];
                 arr[j + 1] = tmp;
+                 */
+                arr.swap(j, j + 1);
             }
         }
     }
