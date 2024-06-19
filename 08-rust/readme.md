@@ -214,4 +214,39 @@ fn main() {
   println!("{}", *ref_a2); //如果把这行代码注释了，又是什么情况？
 }
 ```
-  
+
+## 第三课：结构体、枚举及常用集合类型
+### 9. 结构体和枚举
+#### 9.1 有一个名为 Person 的结构体，包含以下字段：
+
+* name（字符串类型）
+* age（整数类型）
+* email（字符串类型）
+
+#### 要求：
+* 定义这个结构体
+* 为该结构体实现关联函数`new`，用以构建实例
+* 对其字段分别实现`get` 和 `set` 关联方法。
+
+#### 9.2 有一个名为 Status 的枚举，表示一个任务的状态，包含以下变体：
+
+* NotStarted
+* InProgress（包含一个表示进度的浮点数）
+* Completed
+
+#### 要求：
+* 定义该枚举类型
+* 写一个关联方法`send_message`，返回类型为`&str`,使用 match 根据三种不同的变体打印相关的信息。对于InProgress类型，打印的信息中需要包含进度信息。
+
+### 10. Option和match
+#### 10.1 定义一个函数 find_person_by_email，接受一个 Vec<Person> 和一个 String 作为参数，返回一个 Option<Person>，表示在列表中找到的第一个匹配的Person。如果没有找到，返回 None。
+
+#### 10.2 定义一个函数print_person_info，使用 match 表达式处理 Option<Person>，如果找到，打印出 Person 的信息，如果没有找到，打印出一条消息表示没有找到。
+
+### 11. String、Vec和HashMap
+#### 11.1 定义一个函数 group_people_by_age，接受一个 Vec<Person> 作为参数，返回一个 HashMap<u32, Vec<Person>>，将 Person 按照年龄进行分组。
+
+#### 11.2 使用 String 类型完成以下任务：
+
+定义一个函数 to_uppercase_names，接受一个 Vec<Person> 作为参数，返回一个新的 Vec<String>，其中包含所有 Person 的大写名字。
+
