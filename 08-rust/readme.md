@@ -250,3 +250,11 @@ fn main() {
 
 定义一个函数 to_uppercase_names，接受一个 Vec<Person> 作为参数，返回一个新的 Vec<String>，其中包含所有 Person 的大写名字。
 
+## 第四课 泛型与特征
+### 实现一个简单的通知系统，能够发送不同类型的通知消息（如邮件通知、短信通知、推送通知），并且能够存储和处理这些不同类型的通知。要求如下：
+
+* 定义一个 Notification 特征，包含一个 send 方法，用于发送通知。
+* 实现三个结构体 EmailNotification、SmsNotification 和 PushNotification，它们分别代表邮件通知、短信通知和推送通知，并为这些结构体实现 Notification 特征。
+* 创建一个 NotificationSender 结构体，该结构体可以存储多个不同类型的通知，并能够调用它们的 send 方法来发送所有的通知。
+* 使用泛型和特征对象来实现 NotificationSender 的通知存储。
+
