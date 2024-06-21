@@ -348,3 +348,132 @@ fn to_uppercase_names(people: Vec<Person>) -> Vec<String> {
 * 创建一个 NotificationSender 结构体，该结构体可以存储多个不同类型的通知，并能够调用它们的 send 方法来发送所有的通知。
 * 使用泛型和特征对象来实现 NotificationSender 的通知存储。
 
+
+参考答案：
+```Rust
+// 定义 Notification 特征
+trait Notification {
+    fn send(&self);
+}
+
+// 实现 EmailNotification 结构体
+struct EmailNotification {
+    recipient: String,
+    subject: String,
+    body: String,
+}
+
+impl Notification for EmailNotification {
+    fn send(&self) {
+        println!("Sending email to {}: {}\n{}", self.recipient, self.subject, self.body);
+    }
+}
+
+// 实现 SmsNotification 结构体
+struct SmsNotification {
+    phone_number: String,
+    message: String,
+}
+
+impl Notification for SmsNotification {
+    fn send(&self) {
+        println!("Sending SMS to {}: {}", self.phone_number, self.message);
+    }
+}
+
+// 实现 PushNotification 结构体
+struct PushNotification {
+    device_id: String,
+    message: String,
+}
+
+impl Notification for PushNotification {
+    fn send(&self) {
+        println!("Sending push notification to {}: {}", self.device_id, self.message);
+    }
+}
+
+// 定义 NotificationSender 结构体，使用泛型
+struct NotificationSender<T: Notification> {
+    notifications: Vec<T>,
+}
+
+impl<T: Notification> NotificationSender<T> {
+    fn new() -> Self {
+        NotificationSender {
+            notifications: Vec::new(),
+        }
+    }
+
+    fn add_notification(&mut self, notification: T) {
+        self.notifications.push(notification);
+    }
+
+    fn send_all(&self) {
+        for notification in &self.notifications {
+            notification.send();
+        }
+    }
+}
+
+// 使用特征对象的版本
+struct DynNotificationSender {
+    notifications: Vec<Box<dyn Notification>>,
+}
+
+impl DynNotificationSender {
+    fn new() -> Self {
+        DynNotificationSender {
+            notifications: Vec::new(),
+        }
+    }
+
+    fn add_notification(&mut self, notification: Box<dyn Notification>) {
+        self.notifications.push(notification);
+    }
+
+    fn send_all(&self) {
+        for notification in &self.notifications {
+            notification.send();
+        }
+    }
+}
+
+fn main() {
+    // 使用泛型的 NotificationSender
+    let mut email_sender = NotificationSender::new();
+    email_sender.add_notification(EmailNotification {
+        recipient: String::from("user@example.com"),
+        subject: String::from("Welcome!"),
+        body: String::from("Thank you for signing up!"),
+    });
+
+    let mut sms_sender = NotificationSender::new();
+    sms_sender.add_notification(SmsNotification {
+        phone_number: String::from("123-456-7890"),
+        message: String::from("Your code is 1234."),
+    });
+
+    email_sender.send_all();
+    sms_sender.send_all();
+
+    // 使用特征对象的 DynNotificationSender
+    let mut dyn_sender = DynNotificationSender::new();
+    dyn_sender.add_notification(Box::new(EmailNotification {
+        recipient: String::from("user@example.com"),
+        subject: String::from("Welcome!"),
+        body: String::from("Thank you for signing up!"),
+    }));
+    dyn_sender.add_notification(Box::new(SmsNotification {
+        phone_number: String::from("123-456-7890"),
+        message: String::from("Your code is 1234."),
+    }));
+    dyn_sender.add_notification(Box::new(PushNotification {
+        device_id: String::from("device123"),
+        message: String::from("You have a new message."),
+    }));
+
+    dyn_sender.send_all();
+}
+
+```
