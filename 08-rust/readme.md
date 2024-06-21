@@ -228,27 +228,117 @@ fn main() {
 * 为该结构体实现关联函数`new`，用以构建实例
 * 对其字段分别实现`get` 和 `set` 关联方法。
 
+解答：
+```Rust
+// 1. 定义结构体 Person
+#[derive(Debug, Clone)]
+struct Person {
+    name: String,
+    age: u8,
+    email: String,
+}
+// 实现相关的方法和函数
+impl Person {
+    fn new(name: String, age: u8, email: String) -> Self {
+        Self{name, age, email}
+    }
+
+    fn set_name(&mut self,name: String) {self.name = name;}
+    fn get_name(&self) -> &str {self.name.as_str()}
+
+    fn set_age(&mut self, age: u8) {self.age = age;}
+    fn get_age(&self) -> u8 {self.age}
+
+    fn set_email(&mut self, email: String) {self.email = email}
+    fn get_email(&self) -> &str {self.email.as_str()}
+}
+
+
+```
+
 #### 9.2 有一个名为 Status 的枚举，表示一个任务的状态，包含以下变体：
 
 * NotStarted
 * InProgress（包含一个表示进度的浮点数）
 * Completed
 
+
 #### 要求：
 * 定义该枚举类型
-* 写一个关联方法`send_message`，返回类型为`&str`,使用 match 根据三种不同的变体打印相关的信息。对于InProgress类型，打印的信息中需要包含进度信息。
+* 写一个关联方法`send_message`，返回类型为`String`,使用 match 根据三种不同的变体打印相关的信息。对于InProgress类型，打印的信息中需要包含进度信息。
 
+解答：
+```Rust
+// 定义枚举 Status
+enum Status {
+    NotStarted,
+    InProgress(f64),
+    Completed,
+}
+
+impl Status {
+    fn send_message(status: Status) ->String {
+        match status {
+            Status::NotStarted => "还没有开始".to_string(),
+            Status::InProgress(progress) => format!("正在进行中，当前进度为：{}", progress),
+            Status::Completed => "已经完成了".to_string(),
+        }
+    }
+}
+```
 ### 10. Option和match
 #### 10.1 定义一个函数 find_person_by_email，接受一个 Vec<Person> 和一个 String 作为参数，返回一个 Option<Person>，表示在列表中找到的第一个匹配的Person。如果没有找到，返回 None。
+解答：
+```Rust
+fn find_person_by_email(people: Vec<Person>, email: String) -> Option<Person> {
+    for person in people {
+        if person.email == email {
+            return Some(person);
+        }
+    }
+    None
+}
+```
 
 #### 10.2 定义一个函数print_person_info，使用 match 表达式处理 Option<Person>，如果找到，打印出 Person 的信息，如果没有找到，打印出一条消息表示没有找到。
+解答：
 
+```Rust
+fn print_person_info(person_option: Option<Person>) {
+    match person_option {
+        Some(person) => println!("Found person: {:?}", person),
+        None => println!("Person not found"),
+    }
+}
+```
 ### 11. String、Vec和HashMap
 #### 11.1 定义一个函数 group_people_by_age，接受一个 Vec<Person> 作为参数，返回一个 HashMap<u32, Vec<Person>>，将 Person 按照年龄进行分组。
-
+解答：
+```Rust
+// 定义函数 group_people_by_age
+use std::collections::HashMap;
+fn group_people_by_age(people: Vec<Person>) -> HashMap<u8, Vec<Person>> {
+    let mut age_groups: HashMap<u8, Vec<Person>> = HashMap::new();
+    for person in people {
+        age_groups.entry(person.age).or_insert(Vec::new()).push(person);
+    }
+    age_groups
+}
+```
 #### 11.2 使用 String 类型完成以下任务：
 
 定义一个函数 to_uppercase_names，接受一个 Vec<Person> 作为参数，返回一个新的 Vec<String>，其中包含所有 Person 的大写名字。
+解答：
+```Rust
+// 定义函数 to_uppercase_names
+fn to_uppercase_names(people: Vec<Person>) -> Vec<String> {
+    let mut uppercase_names = Vec::new();
+    for person in people {
+        uppercase_names.push(person.name.to_uppercase());
+    }
+    uppercase_names
+}
+```
 
 ## 第四课 泛型与特征
 ### 12. 实现一个简单的通知系统，能够发送不同类型的通知消息（如邮件通知、短信通知、推送通知），并且能够存储和处理这些不同类型的通知。要求如下：
