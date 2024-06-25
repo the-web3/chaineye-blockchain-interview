@@ -540,6 +540,7 @@ fn main() {
 
 1. calculator_core：核心计算逻辑。
 2. calculator_io：用于处理输入输出及错误管理。
+
 calculator_core 包含基本的加减乘除功能，并在计算过程中可能返回自定义错误。
 
 calculator_io 包含读取用户输入和输出结果的功能，并将 calculator_core 中的错误转换为用户友好的错误信息。
