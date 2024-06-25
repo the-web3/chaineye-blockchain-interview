@@ -477,3 +477,86 @@ fn main() {
 }
 
 ```
+
+## 第五课 闭包与生命周期
+### 13. 编写一个函数 apply_twice，它接受一个闭包和一个整数，并将该闭包应用两次。闭包接受并返回一个整数。你需要正确地定义 apply_twice 函数的类型签名，并实现该函数。
+```Rust
+fn apply_twice<F>(f: F, x: i32) -> i32
+where
+    F: Fn(i32) -> i32,
+{
+    // 在此实现
+}
+
+// 使用示例
+fn main() {
+    let add_two = |x| x + 2;
+    let result = apply_twice(add_two, 5);
+    println!("{}", result); // 应输出 9
+}
+
+```
+
+### 14. 编写一个函数 generate_adder，它接受一个整数参数 x，并返回一个闭包。该闭包接受一个整数参数 y，并返回 x + y。注意，闭包必须捕获外部变量 x。
+```Rust
+fn generate_adder(x: i32) -> impl Fn(i32) -> i32 {
+    // 在此实现
+}
+
+// 使用示例
+fn main() {
+    let adder = generate_adder(5);
+    println!("{}", adder(3)); // 应输出 8
+}
+
+```
+
+### 15. 编写一个函数 longest_with_an_announcement，它接受两个字符串切片和一个闭包作为参数。该闭包接受一个字符串切片，并返回一个字符串切片。函数返回两个字符串切片中较长的一个，并调用闭包来打印一个公告。
+```Rust
+fn longest_with_an_announcement<'a, F>(x: &'a str, y: &'a str, ann: F) -> &'a str
+where
+    F: Fn(&str) -> &str,
+{
+    // 在此实现
+}
+
+// 使用示例
+fn main() {
+    let x = "Hello, world!";
+    let y = "Hi, Rust!";
+    let announcement = |s: &str| {
+        println!("Announcement: {}", s);
+        s
+    };
+    let result = longest_with_an_announcement(x, y, announcement);
+    println!("The longest string is {}", result); // 应输出 "Hello, world!"
+}
+
+```
+
+## 第六课 项目管理与错误处理
+### 15. 实现一个简单的计算器库
+#### 问题：编写一个名为 calculator_workspace 的工作区项目，其中包含两个库包：
+
+1. calculator_core：核心计算逻辑。
+2. calculator_io：用于处理输入输出及错误管理。
+calculator_core 包含基本的加减乘除功能，并在计算过程中可能返回自定义错误。
+
+calculator_io 包含读取用户输入和输出结果的功能，并将 calculator_core 中的错误转换为用户友好的错误信息。
+
+#### 项目结构
+```css
+calculator_workspace/
+├── Cargo.toml
+├── calculator_core/
+│   ├── Cargo.toml
+│   └── src/
+│       └── lib.rs
+├── calculator_io/
+│   ├── Cargo.toml
+│   └── src/
+│       └── lib.rs
+└── tests/
+    └── integration_test.rs
+
+```
