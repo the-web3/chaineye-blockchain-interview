@@ -48,7 +48,7 @@ m/44'/coin_type'/account'/change/address_index
 
 ## 5.MPC GG20 算法 Keygen 和 Sign 分别需要经过多少轮共识
 
-- Keygen: 4 轮
+- Keygen: 5 轮
 - Sign: 7 轮
 
 ## 6.为什么 schnorr 比特币手续费可以降低
