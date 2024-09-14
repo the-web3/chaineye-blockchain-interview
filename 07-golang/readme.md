@@ -1151,4 +1151,1002 @@ func main() {
 
 跟上一题一样，不同的是`*Student` 的定义后本身没有初始化值，所以 `*Student` 是 `nil`的，但是`*Student` 实现了 `People` 接口，接口不为 `nil`。
 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+## 第二十八题、在 golang 协程和channel配合使用
+
+> 写代码实现两个 goroutine，其中一个产生随机数并写入到 go channel 中，另外一个从 channel 中读取数字并打印到标准输出。最终输出五个随机数。
+
+**解析**
+
+这是一道很简单的golang基础题目，实现方法也有很多种，一般想答让面试官满意的答案还是有几点注意的地方。
+
+1. `goroutine` 在golang中式非阻塞的
+2. `channel` 无缓冲情况下，读写都是阻塞的，且可以用`for`循环来读取数据，当管道关闭后，`for` 退出。
+3.  golang 中有专用的`select case` 语法从管道读取数据。
+
+示例代码如下：
+
+```go
+func main() {
+    out := make(chan int)
+    wg := sync.WaitGroup{}
+    wg.Add(2)
+    go func() {
+        defer wg.Done()
+        for i := 0; i < 5; i++ {
+            out <- rand.Intn(5)
+        }
+        close(out)
+    }()
+    go func() {
+        defer wg.Done()
+        for i := range out {
+            fmt.Println(i)
+        }
+    }()
+    wg.Wait()
+}
+```
+
+如果不想使用 `sync.WaitGroup`, 也可以用一个 `done` channel.
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+)
+
+func main() {
+	random := make(chan int)
+	done := make(chan bool)
+
+	go func() {
+		for {
+			num, ok := <-random
+			if ok {
+				fmt.Println(num)
+			} else {
+				done <- true
+			}
+		}
+	}()
+
+	go func() {
+		defer close(random)
+
+		for i := 0; i < 5; i++ {
+			random <- rand.Intn(5)
+		}
+	}()
+
+	<-done
+	close(done)
+}
+```
+
+## 第二十九题、实现阻塞读且并发安全的map
+
+GO里面MAP如何实现key不存在 get操作等待 直到key存在或者超时，保证并发安全，且需要实现以下接口：
+
+```go
+type sp interface {
+    Out(key string, val interface{})  //存入key /val，如果该key读取的goroutine挂起，则唤醒。此方法不会阻塞，时刻都可以立即执行并返回
+    Rd(key string, timeout time.Duration) interface{}  //读取一个key，如果key不存在阻塞，等待key存在或者超时
+}
+```
+
+**解析：**
+
+看到阻塞协程第一个想到的就是`channel`，题目中要求并发安全，那么必须用锁，还要实现多个`goroutine`读的时候如果值不存在则阻塞，直到写入值，那么每个键值需要有一个阻塞`goroutine` 的 `channel`。
+
+[实现如下：](../src/q010.go) 
+
+```go
+type Map struct {
+	c   map[string]*entry
+	rmx *sync.RWMutex
+}
+type entry struct {
+	ch      chan struct{}
+	value   interface{}
+	isExist bool
+}
+
+func (m *Map) Out(key string, val interface{}) {
+	m.rmx.Lock()
+	defer m.rmx.Unlock()
+	item, ok := m.c[key]
+	if !ok {
+		m.c[key] = &entry{
+			value: val,
+			isExist: true,
+		}
+		return
+	}
+	item.value = val
+	if !item.isExist {
+		if item.ch != nil {
+			close(item.ch)
+			item.ch = nil
+		}
+	}
+	return
+}
+```
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## 第三十题、高并发下的锁与 map 的读写
+
+场景：在一个高并发的web服务器中，要限制IP的频繁访问。现模拟100个IP同时并发访问服务器，每个IP要重复访问1000次。
+
+每个IP三分钟之内只能访问一次。修改以下代码完成该过程，要求能成功输出 success:100
+
+```go
+package main
+ 
+import (
+	"fmt"
+	"time"
+)
+ 
+type Ban struct {
+	visitIPs map[string]time.Time
+}
+ 
+func NewBan() *Ban {
+	return &Ban{visitIPs: make(map[string]time.Time)}
+}
+func (o *Ban) visit(ip string) bool {
+	if _, ok := o.visitIPs[ip]; ok {
+		return true
+	}
+	o.visitIPs[ip] = time.Now()
+	return false
+}
+func main() {
+	success := 0
+	ban := NewBan()
+	for i := 0; i < 1000; i++ {
+		for j := 0; j < 100; j++ {
+			go func() {
+				ip := fmt.Sprintf("192.168.1.%d", j)
+				if !ban.visit(ip) {
+					success++
+				}
+			}()
+		}
+ 
+	}
+	fmt.Println("success:", success)
+}
+```
+
+**解析**
+
+该问题主要考察了并发情况下map的读写问题，而给出的初始代码，又存在`for`循环中启动`goroutine`时变量使用问题以及`goroutine`执行滞后问题。
+
+因此，首先要保证启动的`goroutine`得到的参数是正确的，然后保证`map`的并发读写，最后保证三分钟只能访问一次。
+
+多CPU核心下修改`int`的值极端情况下会存在不同步情况，因此需要原子性的修改int值。
+
+下面给出的实例代码，是启动了一个协程每分钟检查一下`map`中的过期`ip`，`for`启动协程时传参。
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+type Ban struct {
+	visitIPs map[string]time.Time
+	lock      sync.Mutex
+}
+
+func NewBan(ctx context.Context) *Ban {
+	o := &Ban{visitIPs: make(map[string]time.Time)}
+	go func() {
+		timer := time.NewTimer(time.Minute * 1)
+		for {
+			select {
+			case <-timer.C:
+				o.lock.Lock()
+				for k, v := range o.visitIPs {
+					if time.Now().Sub(v) >= time.Minute*1 {
+						delete(o.visitIPs, k)
+					}
+				}
+				o.lock.Unlock()
+				timer.Reset(time.Minute * 1)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return o
+}
+func (o *Ban) visit(ip string) bool {
+	o.lock.Lock()
+	defer o.lock.Unlock()
+	if _, ok := o.visitIPs[ip]; ok {
+		return true
+	}
+	o.visitIPs[ip] = time.Now()
+	return false
+}
+func main() {
+	success := int64(0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ban := NewBan(ctx)
+
+	wait := &sync.WaitGroup{}
+
+	wait.Add(1000 * 100)
+	for i := 0; i < 1000; i++ {
+		for j := 0; j < 100; j++ {
+			go func(j int) {
+				defer wait.Done()
+				ip := fmt.Sprintf("192.168.1.%d", j)
+				if !ban.visit(ip) {
+					atomic.AddInt64(&success, 1)
+				}
+			}(j)
+		}
+
+	}
+	wait.Wait()
+
+	fmt.Println("success:", success)
+}
+```
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## 第三十一题、写出以下逻辑，要求每秒钟调用一次proc并保证程序不退出?
+
+```go
+package main
+
+func main() {
+    go func() {
+        // 1 在这里需要你写算法
+        // 2 要求每秒钟调用一次proc函数
+        // 3 要求程序不能退出
+    }()
+
+    select {}
+}
+
+func proc() {
+    panic("ok")
+}
+```
+
+**解析**
+
+题目主要考察了两个知识点：
+
+1. 定时执行执行任务
+2. 捕获 panic 错误
+
+题目中要求每秒钟执行一次，首先想到的就是 `time.Ticker`对象，该函数可每秒钟往`chan`中放一个`Time`,正好符合我们的要求。
+
+在 `golang` 中捕获 `panic` 一般会用到 `recover()` 函数。  
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	go func() {
+		// 1 在这里需要你写算法
+		// 2 要求每秒钟调用一次proc函数
+		// 3 要求程序不能退出
+
+		t := time.NewTicker(time.Second * 1)
+		for {
+			select {
+			case <-t.C:
+				go func() {
+					defer func() {
+						if err := recover(); err != nil {
+							fmt.Println(err)
+						}
+					}()
+					proc()
+				}()
+			}
+		}
+	}()
+
+	select {}
+}
+
+func proc() {
+	panic("ok")
+}
+
+```
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+## 第三十二题、为 sync.WaitGroup 中Wait函数支持 WaitTimeout 功能.
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+func main() {
+    wg := sync.WaitGroup{}
+    c := make(chan struct{})
+    for i := 0; i < 10; i++ {
+        wg.Add(1)
+        go func(num int, close <-chan struct{}) {
+            defer wg.Done()
+            <-close
+            fmt.Println(num)
+        }(i, c)
+    }
+
+    if WaitTimeout(&wg, time.Second*5) {
+        close(c)
+        fmt.Println("timeout exit")
+    }
+    time.Sleep(time.Second * 10)
+}
+
+func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+    // 要求手写代码
+    // 要求sync.WaitGroup支持timeout功能
+    // 如果timeout到了超时时间返回true
+    // 如果WaitGroup自然结束返回false
+}
+```
+
+
+**解析**
+
+首先 `sync.WaitGroup` 对象的 `Wait` 函数本身是阻塞的，同时，超时用到的`time.Timer` 对象也需要阻塞的读。
+
+同时阻塞的两个对象肯定要每个启动一个协程,每个协程去处理一个阻塞，难点在于怎么知道哪个阻塞先完成。
+
+目前我用的方式是声明一个没有缓冲的`chan`，谁先完成谁优先向管道中写入数据。
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+func main() {
+	wg := sync.WaitGroup{}
+	c := make(chan struct{})
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(num int, close <-chan struct{}) {
+			defer wg.Done()
+			<-close
+			fmt.Println(num)
+		}(i, c)
+	}
+
+	if WaitTimeout(&wg, time.Second*5) {
+		close(c)
+		fmt.Println("timeout exit")
+	}
+	time.Sleep(time.Second * 10)
+}
+
+func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	// 要求手写代码
+	// 要求sync.WaitGroup支持timeout功能
+	// 如果timeout到了超时时间返回true
+	// 如果WaitGroup自然结束返回false
+	ch := make(chan bool, 1)
+
+	go time.AfterFunc(timeout, func() {
+		ch <- true
+	})
+
+	go func() {
+		wg.Wait()
+		ch <- false
+	}()
+	
+	return <- ch
+}
+```
+
+
+## 第三十三题、对已经关闭的的chan进行读写，会怎么样？为什么？
+
+## 题目
+
+对已经关闭的的 chan 进行读写，会怎么样？为什么？
+
+## 回答
+
+- 读已经关闭的 chan 能一直读到东西，但是读到的内容根据通道内关闭前是否有元素而不同。
+    - 如果 chan 关闭前，buffer 内有元素还未读 , 会正确读到 chan 内的值，且返回的第二个 bool 值（是否读成功）为 true。
+    - 如果 chan 关闭前，buffer 内有元素已经被读完，chan 内无值，接下来所有接收的值都会非阻塞直接成功，返回 channel 元素的零值，但是第二个 bool 值一直为 false。
+- 写已经关闭的 chan 会 panic
+
+
+## 示例
+
+### 1. 写已经关闭的 chan
+
+```go
+func main(){
+    c := make(chan int,3)
+    close(c)
+    c <- 1
+}
+//输出结果
+panic: send on closed channel
+
+goroutine 1 [running]
+main.main()
+...
+```
+
+- 注意这个 send on closed channel，待会会提到。
+
+### 2. 读已经关闭的 chan
+
+```go
+package main
+import "fmt"
+
+func main()  {
+    fmt.Println("以下是数值的chan")
+    ci:=make(chan int,3)
+    ci<-1
+    close(ci)
+    num,ok := <- ci
+    fmt.Printf("读chan的协程结束，num=%v， ok=%v\n",num,ok)
+    num1,ok1 := <-ci
+    fmt.Printf("再读chan的协程结束，num=%v， ok=%v\n",num1,ok1)
+    num2,ok2 := <-ci
+    fmt.Printf("再再读chan的协程结束，num=%v， ok=%v\n",num2,ok2)
+    
+    fmt.Println("以下是字符串chan")
+    cs := make(chan string,3)
+    cs <- "aaa"
+    close(cs)
+    str,ok := <- cs
+    fmt.Printf("读chan的协程结束，str=%v， ok=%v\n",str,ok)
+    str1,ok1 := <-cs
+    fmt.Printf("再读chan的协程结束，str=%v， ok=%v\n",str1,ok1)
+    str2,ok2 := <-cs
+    fmt.Printf("再再读chan的协程结束，str=%v， ok=%v\n",str2,ok2)
+
+    fmt.Println("以下是结构体chan")
+    type MyStruct struct{
+        Name string
+    }
+    cstruct := make(chan MyStruct,3)
+    cstruct <- MyStruct{Name: "haha"}
+    close(cstruct)
+    stru,ok := <- cstruct
+    fmt.Printf("读chan的协程结束，stru=%v， ok=%v\n",stru,ok)
+    stru1,ok1 := <-cs
+    fmt.Printf("再读chan的协程结束，stru=%v， ok=%v\n",stru1,ok1)
+    stru2,ok2 := <-cs
+    fmt.Printf("再再读chan的协程结束，stru=%v， ok=%v\n",stru2,ok2)
+}
+
+```
+
+输出结果
+
+```bash
+以下是数值的chan
+读chan的协程结束，num=1， ok=true
+再读chan的协程结束，num=0， ok=false
+再再读chan的协程结束，num=0， ok=false
+以下是字符串chan
+读chan的协程结束，str=aaa， ok=true
+再读chan的协程结束，str=， ok=false
+再再读chan的协程结束，str=， ok=false
+以下是结构体chan
+读chan的协程结束，stru={haha}， ok=true
+再读chan的协程结束，stru=， ok=false
+再再读chan的协程结束，stru=， ok=false
+```
+
+
+## 多问一句
+
+### 1. 为什么写已经关闭的 `chan` 就会 `panic` 呢？
+
+```go
+//在 src/runtime/chan.go
+func chansend(c *hchan,ep unsafe.Pointer,block bool,callerpc uintptr) bool {
+    //省略其他
+    if c.closed != 0 {
+        unlock(&c.lock)
+        panic(plainError("send on closed channel"))
+    }   
+    //省略其他
+}
+```
+
+- 当 `c.closed != 0` 则为通道关闭，此时执行写，源码提示直接 `panic`，输出的内容就是上面提到的 `"send on closed channel"`。
+
+### 2. 为什么读已关闭的 chan 会一直能读到值？
+
+```go
+func chanrecv(c *hchan,ep unsafe.Pointer,block bool) (selected,received bool) {
+    //省略部分逻辑
+    lock(&c.lock)
+    //当chan被关闭了，而且缓存为空时
+    //ep 是指 val,ok := <-c 里的val地址
+    if c.closed != 0 && c.qcount == 0 {
+        if receenabled {
+            raceacquire(c.raceaddr())
+        }
+        unlock(&c.lock)
+        //如果接受之的地址不空，那接收值将获得一个该值类型的零值
+        //typedmemclr 会根据类型清理响应的内存
+        //这就解释了上面代码为什么关闭的chan 会返回对应类型的零值
+        if ep != null {
+            typedmemclr(c.elemtype,ep)
+        }   
+        //返回两个参数 selected,received
+        // 第二个采纳数就是 val,ok := <- c 里的 ok
+        //也就解释了为什么读关闭的chan会一直返回false
+        return true,false
+    }   
+}
+```
+- `c.closed != 0 && c.qcount == 0` 指通道已经关闭，且缓存为空的情况下（已经读完了之前写到通道里的值）
+- 如果接收值的地址 `ep` 不为空
+    - 那接收值将获得是一个该类型的零值
+    - `typedmemclr` 会根据类型清理相应地址的内存
+    - 这就解释了上面代码为什么关闭的 chan 会返回对应类型的零值
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+## 第三十四题、简单聊聊内存逃逸？
+
+### 问题
+
+知道golang的内存逃逸吗？什么情况下会发生内存逃逸？
+
+### 回答
+
+golang程序变量会携带有一组校验数据，用来证明它的整个生命周期是否在运行时完全可知。如果变量通过了这些校验，它就可以在栈上分配。否则就说它 逃逸 了，必须在堆上分配。
+
+能引起变量逃逸到堆上的典型情况：
+
+- **在方法内把局部变量指针返回** 局部变量原本应该在栈中分配，在栈中回收。但是由于返回时被外部引用，因此其生命周期大于栈，则溢出。
+- **发送指针或带有指针的值到 channel 中。**  在编译时，是没有办法知道哪个 `goroutine` 会在 `channel` 上接收数据。所以编译器没法知道变量什么时候才会被释放。
+- **在一个切片上存储指针或带指针的值。** 一个典型的例子就是 `[]*string` 。这会导致切片的内容逃逸。尽管其后面的数组可能是在栈上分配的，但其引用的值一定是在堆上。
+- **slice 的背后数组被重新分配了，因为 append 时可能会超出其容量( cap )。** slice 初始化的地方在编译时是可以知道的，它最开始会在栈上分配。如果切片背后的存储要基于运行时的数据进行扩充，就会在堆上分配。
+- **在 interface 类型上调用方法。**  在 interface 类型上调用方法都是动态调度的 —— 方法的真正实现只能在运行时知道。想像一个 io.Reader 类型的变量 r , 调用 r.Read(b) 会使得 r 的值和切片b 的背后存储都逃逸掉，所以会在堆上分配。
+
+### 举例
+
+**通过一个例子加深理解，接下来尝试下怎么通过 `go build -gcflags=-m` 查看逃逸的情况。**
+
+```go
+package main
+import "fmt"
+type A struct {
+ s string
+}
+// 这是上面提到的 "在方法内把局部变量指针返回" 的情况
+func foo(s string) *A {
+ a := new(A) 
+ a.s = s
+ return a //返回局部变量a,在C语言中妥妥野指针，但在go则ok，但a会逃逸到堆
+}
+func main() {
+ a := foo("hello")
+ b := a.s + " world"
+ c := b + "!"
+ fmt.Println(c)
+}
+```
+
+执行go build -gcflags=-m main.go
+
+```bash
+go build -gcflags=-m main.go
+# command-line-arguments
+./main.go:7:6: can inline foo
+./main.go:13:10: inlining call to foo
+./main.go:16:13: inlining call to fmt.Println
+/var/folders/45/qx9lfw2s2zzgvhzg3mtzkwzc0000gn/T/go-build409982591/b001/_gomod_.go:6:6: can inline init.0
+./main.go:7:10: leaking param: s
+./main.go:8:10: new(A) escapes to heap
+./main.go:16:13: io.Writer(os.Stdout) escapes to heap
+./main.go:16:13: c escapes to heap
+./main.go:15:9: b + "!" escapes to heap
+./main.go:13:10: main new(A) does not escape
+./main.go:14:11: main a.s + " world" does not escape
+./main.go:16:13: main []interface {} literal does not escape
+<autogenerated>:1: os.(*File).close .this does not escape
+```
+
+- `./main.go:8:10: new(A) escapes to heap` 说明 `new(A)` 逃逸了,符合上述提到的常见情况中的第一种。
+- `./main.go:14:11: main a.s + " world" does not escape` 说明 b 变量没有逃逸，因为它只在方法内存在，会在方法结束时被回收。
+- `./main.go:15:9: b + "!" escapes to heap` 说明 c 变量逃逸，通过`fmt.Println(a ...interface{})`打印的变量，都会发生逃逸，感兴趣的朋友可以去查查为什么。
+
+以上操作其实就叫逃逸分析。下篇文章，跟大家聊聊怎么用一个比较trick的方法使变量不逃逸。方便大家在面试官面前秀一波。
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+## 第三十五题、 字符串转成byte数组，会发生内存拷贝吗？
+
+### 问题
+
+字符串转成byte数组，会发生内存拷贝吗？
+
+### 回答
+
+字符串转成切片，会产生拷贝。严格来说，只要是发生类型强转都会发生内存拷贝。那么问题来了。
+
+频繁的内存拷贝操作听起来对性能不大友好。有没有什么办法可以在字符串转成切片的时候不用发生拷贝呢？
+
+### 解释
+
+```go
+package main
+
+import (
+ "fmt"
+ "reflect"
+ "unsafe"
+)
+
+func main() {
+ a :="aaa"
+ ssh := *(*reflect.StringHeader)(unsafe.Pointer(&a))
+ b := *(*[]byte)(unsafe.Pointer(&ssh))  
+ fmt.Printf("%v",b)
+}
+```
+
+**`StringHeader` 是字符串在go的底层结构。**
+
+```go
+type StringHeader struct {
+ Data uintptr
+ Len  int
+}
+```
+
+**`SliceHeader` 是切片在go的底层结构。**
+
+```go
+type SliceHeader struct {
+ Data uintptr
+ Len  int
+ Cap  int
+}
+```
+
+那么如果想要在底层转换二者，只需要把 StringHeader 的地址强转成 SliceHeader 就行。那么go有个很强的包叫 unsafe 。
+
+1. `unsafe.Pointer(&a)`方法可以得到变量a的地址。
+2. `(*reflect.StringHeader)(unsafe.Pointer(&a))` 可以把字符串a转成底层结构的形式。
+3. `(*[]byte)(unsafe.Pointer(&ssh))` 可以把ssh底层结构体转成byte的切片的指针。
+4. 再通过 `*`转为指针指向的实际内容。
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## 第三十六题、 http包的内存泄漏
+
+### 问题
+
+```go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"runtime"
+)
+
+func main() {
+	num := 6
+	for index := 0; index < num; index++ {
+		resp, _ := http.Get("https://www.baidu.com")
+		_, _ = ioutil.ReadAll(resp.Body)
+	}
+	fmt.Printf("此时goroutine个数= %d\n", runtime.NumGoroutine())
+
+
+}
+```
+
+上面这道题在不执行`resp.Body.Close()`的情况下，泄漏了吗？如果泄漏，泄漏了多少个goroutine?
+
+### 怎么答
+
+不进行resp.Body.Close()，泄漏是一定的。但是泄漏的goroutine个数就让我迷糊了。由于执行了6遍，每次泄漏一个读和写goroutine，就是12个goroutine，加上main函数本身也是一个goroutine，所以答案是13.
+然而执行程序，发现答案是3，出入有点大，为什么呢？
+
+### 解释
+
+我们直接看源码。golang 的 http 包。
+
+```go
+http.Get()
+
+-- DefaultClient.Get
+----func (c *Client) do(req *Request)
+------func send(ireq *Request, rt RoundTripper, deadline time.Time)
+-------- resp, didTimeout, err = send(req, c.transport(), deadline) 
+// 以上代码在 go/1.12.7/libexec/src/net/http/client:174 
+
+func (c *Client) transport() RoundTripper {
+	if c.Transport != nil {
+		return c.Transport
+	}
+	return DefaultTransport
+}
+```
+
+- 说明 `http.Get` 默认使用 `DefaultTransport` 管理连接。
+
+DefaultTransport 是干嘛的呢？
+
+```go
+// It establishes network connections as needed
+// and caches them for reuse by subsequent calls.
+```
+
+- `DefaultTransport` 的作用是根据需要建立网络连接并缓存它们以供后续调用重用。
+
+那么 `DefaultTransport` 什么时候会建立连接呢？
+
+接着上面的代码堆栈往下翻
+
+```go
+func send(ireq *Request, rt RoundTripper, deadline time.Time) 
+--resp, err = rt.RoundTrip(req) // 以上代码在 go/1.12.7/libexec/src/net/http/client:250
+func (t *Transport) RoundTrip(req *http.Request)
+func (t *Transport) roundTrip(req *Request)
+func (t *Transport) getConn(treq *transportRequest, cm connectMethod)
+func (t *Transport) dialConn(ctx context.Context, cm connectMethod) (*persistConn, error) {
+    ...
+	go pconn.readLoop()  // 启动一个读goroutine
+	go pconn.writeLoop() // 启动一个写goroutine
+	return pconn, nil
+}
+```
+
+- 一次建立连接，就会启动一个读goroutine和写goroutine。这就是为什么一次`http.Get()`会泄漏两个goroutine的来源。
+- 泄漏的来源知道了，也知道是因为没有执行close
+
+**那为什么不执行 close 会泄漏呢？**
+
+回到刚刚启动的读goroutine 的 `readLoop()` 代码里
+
+```go
+func (pc *persistConn) readLoop() {
+	alive := true
+	for alive {
+        ...
+		// Before looping back to the top of this function and peeking on
+		// the bufio.Reader, wait for the caller goroutine to finish
+		// reading the response body. (or for cancelation or death)
+		select {
+		case bodyEOF := <-waitForBodyRead:
+			pc.t.setReqCanceler(rc.req, nil) // before pc might return to idle pool
+			alive = alive &&
+				bodyEOF &&
+				!pc.sawEOF &&
+				pc.wroteRequest() &&
+				tryPutIdleConn(trace)
+			if bodyEOF {
+				eofc <- struct{}{}
+			}
+		case <-rc.req.Cancel:
+			alive = false
+			pc.t.CancelRequest(rc.req)
+		case <-rc.req.Context().Done():
+			alive = false
+			pc.t.cancelRequest(rc.req, rc.req.Context().Err())
+		case <-pc.closech:
+			alive = false
+        }
+        ...
+	}
+}
+```
+
+其中第一个 body 被读取完或关闭这个 case:
+
+```go
+alive = alive &&
+    bodyEOF &&
+    !pc.sawEOF &&
+    pc.wroteRequest() &&
+    tryPutIdleConn(trace)
+
+```
+
+bodyEOF 来源于到一个通道 waitForBodyRead，这个字段的 true 和 false 直接决定了 alive 变量的值（alive=true那读goroutine继续活着，循环，否则退出goroutine）。
+
+**那么这个通道的值是从哪里过来的呢？**
+
+
+```go
+// go/1.12.7/libexec/src/net/http/transport.go: 1758
+		body := &bodyEOFSignal{
+			body: resp.Body,
+			earlyCloseFn: func() error {
+				waitForBodyRead <- false
+				<-eofc // will be closed by deferred call at the end of the function
+				return nil
+
+			},
+			fn: func(err error) error {
+				isEOF := err == io.EOF
+				waitForBodyRead <- isEOF
+				if isEOF {
+					<-eofc // see comment above eofc declaration
+				} else if err != nil {
+					if cerr := pc.canceled(); cerr != nil {
+						return cerr
+					}
+				}
+				return err
+			},
+		}
+```
+
+- 如果执行 earlyCloseFn ，waitForBodyRead 通道输入的是 false，alive 也会是 false，那 readLoop() 这个 goroutine 就会退出。
+- 如果执行 fn ，其中包括正常情况下 body 读完数据抛出 io.EOF 时的 case，waitForBodyRead 通道输入的是 true，那 alive 会是 true，那么 readLoop() 这个 goroutine 就不会退出，同时还顺便执行了 tryPutIdleConn(trace) 。
+
+```go
+// tryPutIdleConn adds pconn to the list of idle persistent connections awaiting
+// a new request.
+// If pconn is no longer needed or not in a good state, tryPutIdleConn returns
+// an error explaining why it wasn't registered.
+// tryPutIdleConn does not close pconn. Use putOrCloseIdleConn instead for that.
+func (t *Transport) tryPutIdleConn(pconn *persistConn) error
+```
+
+- tryPutIdleConn 将 pconn 添加到等待新请求的空闲持久连接列表中，也就是之前说的连接会复用。
+
+那么问题又来了，什么时候会执行这个 `fn` 和 `earlyCloseFn` 呢？
+
+```go
+func (es *bodyEOFSignal) Close() error {
+	es.mu.Lock()
+	defer es.mu.Unlock()
+	if es.closed {
+		return nil
+	}
+	es.closed = true
+	if es.earlyCloseFn != nil && es.rerr != io.EOF {
+		return es.earlyCloseFn() // 关闭时执行 earlyCloseFn
+	}
+	err := es.body.Close()
+	return es.condfn(err)
+}
+```
+
+- 上面这个其实就是我们比较收悉的 resp.Body.Close() ,在里面会执行 earlyCloseFn，也就是此时 readLoop() 里的 waitForBodyRead 通道输入的是 false，alive 也会是 false，那 readLoop() 这个 goroutine 就会退出，goroutine 不会泄露。
+  
+```go
+b, err = ioutil.ReadAll(resp.Body)
+--func ReadAll(r io.Reader) 
+----func readAll(r io.Reader, capacity int64) 
+------func (b *Buffer) ReadFrom(r io.Reader)
+
+
+// go/1.12.7/libexec/src/bytes/buffer.go:207
+func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
+	for {
+		...
+		m, e := r.Read(b.buf[i:cap(b.buf)])  // 看这里，是body在执行read方法
+		...
+	}
+}
+```
+
+- 这个`read`，其实就是 `bodyEOFSignal` 里的
+
+```go
+func (es *bodyEOFSignal) Read(p []byte) (n int, err error) {
+	...
+	n, err = es.body.Read(p)
+	if err != nil {
+		... 
+    // 这里会有一个io.EOF的报错，意思是读完了
+		err = es.condfn(err)
+	}
+	return
+}
+
+
+func (es *bodyEOFSignal) condfn(err error) error {
+	if es.fn == nil {
+		return err
+	}
+	err = es.fn(err)  // 这了执行了 fn
+	es.fn = nil
+	return err
+}
+```
+
+- 上面这个其实就是我们比较收悉的读取 body 里的内容。 ioutil.ReadAll() ,在读完 body 的内容时会执行 fn，也就是此时 readLoop() 里的 waitForBodyRead 通道输入的是 true，alive 也会是 true，那 readLoop() 这个 goroutine 就不会退出，goroutine 会泄露，然后执行 tryPutIdleConn(trace) 把连接放回池子里复用。
+  
+### 总结
+
+- 所以结论呼之欲出了，虽然执行了 6 次循环，而且每次都没有执行 Body.Close() ,就是因为执行了ioutil.ReadAll()把内容都读出来了，连接得以复用，因此只泄漏了一个读goroutine和一个写goroutine，最后加上main goroutine，所以答案就是3个goroutine。
+- 从另外一个角度说，正常情况下我们的代码都会执行 ioutil.ReadAll()，但如果此时忘了 resp.Body.Close()，确实会导致泄漏。但如果你调用的域名一直是同一个的话，那么只会泄漏一个 读goroutine 和一个写goroutine，这就是为什么代码明明不规范但却看不到明显内存泄漏的原因。
+- 那么问题又来了，为什么上面要特意强调是同一个域名呢？改天，回头，以后有空再说吧。
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## 第三十七题 sync.Map 的用法
+
+### 问题
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func main(){
+	var m sync.Map
+	m.Store("address",map[string]string{"province":"江苏","city":"南京"})
+        v,_ := m.Load("address")
+	fmt.Println(v["province"]) 
+}
+```
+
+- A，江苏；
+- B`，v["province"]`取值错误；
+- C，`m.Store`存储错误；
+- D，不知道
+
+## 解析
+
+`invalid operation: v["province"] (type interface {} does not support indexing)`
+因为 `func (m *Map) Store(key interface{}, value interface{})`
+所以 `v`类型是 `interface {}` ，这里需要一个类型断言
+
+```go
+fmt.Println(v.(map[string]string)["province"]) //江苏
+```
+
+
+# 注意：golang 的所有面试题目来自网络，并非 The Web3 社区原创，若有违权，请联系删除。
 
