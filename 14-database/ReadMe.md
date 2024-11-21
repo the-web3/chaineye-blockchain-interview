@@ -164,7 +164,7 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
 
 
-### 聚簇索引和非聚簇索引的区别？
+## 第六题：聚簇索引和非聚簇索引的区别？
 
 | 特性             | 聚簇索引                 | 非聚簇索引                   |
 | ---------------- | ------------------------ | ---------------------------- |
@@ -178,19 +178,19 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
 
 
-### MySQL中是否必然包含聚簇索引吗？
+## 第七题：MySQL中是否必然包含聚簇索引吗？
 
 当使用InnoDB作为引擎时，如果定义了主键，那么InnoDB会使用主键作为聚簇索引，如果没有定义主键，那么会使用第一个非空的唯一索引（NOT NULL and UNIQUE INDEX）作为聚簇索引，如果既没有主键，也没有合适的非空索引，那么InnoDB会自动生成一个6字节隐藏列 _rowid作为聚簇索引。
 
 
 
-## 第六题：覆盖索引和回表查询是什么？
+## 第八题：覆盖索引和回表查询是什么？
 
 
 
 
 
-## 第七题：mysql索引失效的情况？
+## 第九题：mysql索引失效的情况？
 
 - **使用函数或表达式**
 
@@ -270,19 +270,19 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
   
 
-## 第八题： 什么是最左匹配原则?
+## 第十题： 什么是最左匹配原则?
 
 最左匹配原则（Leftmost Matching Principle）是指在使用组合索引时，查询条件中包含的列必须从组合索引的最左边开始，并且顺序一致，才能利用该索引。
 
 
 
-## 第九题：NOT IN和NOT EXIST的区别？
+## 第十一题：NOT IN和NOT EXIST的区别？
 
 
 
 
-
-## 第十题：事务的ACID是什么？
+ 
+## 第十二题：事务的ACID是什么？
 
 **原子性（Atomicity）**： 事务是一个不可分割的工作单元，要么全部成功，要么全部失败。
 
@@ -314,7 +314,7 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 一个事务在执行两次相同的查询时，因为另一个并发事务的插入或删除操作，导致两次查询返回的结果集不同。
 
 
-## 第十一题：MySQL的隔离级别有哪些？
+## 第十三题：MySQL的隔离级别有哪些？
 
 四种隔离级别（`READ UNCOMMITTED`、`READ COMMITTED`、`REPEATABLE READ`、`SERIALIZABLE`）来控制事务的隔离性。默认隔离级别是 `REPEATABLE READ`。
 
@@ -325,15 +325,15 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
 
 
-## 第十二题：MySQL百万级数据分页要注意什么?
+## 第十四题：MySQL百万级数据分页要注意什么?
 
 
 
-## 第十三题：简述MVCC机制
+## 第十五题：简述MVCC机制
 
 
 
-##  第十四题：间隙锁是什么
+##  第十六题：间隙锁是什么
 
 
 
