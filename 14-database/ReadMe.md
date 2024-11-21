@@ -2,7 +2,7 @@
 
 
 
-### 1.MySQL关键字执行顺序？
+## 第一题目.MySQL关键字执行顺序？
 
 1. FROM子句：确定数据来源，包括JOIN的表。
 2. ON：执行JOIN条件。
@@ -15,7 +15,8 @@
 9. ORDER BY子句：最后对结果进行排序。
 10. LIMIT子句：限制结果集的数量。
 
-### 2. drop、delete与truncate分别在什么场景之下使用？
+
+## 第二题：drop、delete与truncate分别在什么场景之下使用？
 
 drop table和truncate table相同：
 
@@ -44,7 +45,7 @@ delete from
 
 
 
-### 3. InnoDB与MyISAM的区别是什么？
+## 第三题：InnoDB与MyISAM的区别是什么？
 
 - InnoDB支持事务，MyISAM不支持；
 
@@ -56,11 +57,8 @@ delete from
 
 - InnoDB中不保存表的行数，如select count(*) from table时，InnoDB需要扫描一遍整个表来计算有多少行，但是MyISAM只要简单的读出保存好的行数即可。注意的是，当count(*)语句包含where条件时MyISAM也需要扫描整个表
 
-  
 
-
-
-### 4. MySQL索引类型?
+## 第四题：MySQL索引类型?
 
 + **B-Tree 索引**
 
@@ -162,7 +160,7 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
 
 
-### InnoDB索引为什么使用B+树？
+## 第五题：InnoDB索引为什么使用B+树？
 
 
 
@@ -186,13 +184,13 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
 
 
-### 覆盖索引和回表查询是什么？
+## 第六题：覆盖索引和回表查询是什么？
 
 
 
 
 
-### mysql索引失效的情况？
+## 第七题：mysql索引失效的情况？
 
 - **使用函数或表达式**
 
@@ -272,19 +270,19 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
   
 
-### 什么是最左匹配原则?
+## 第八题： 什么是最左匹配原则?
 
 最左匹配原则（Leftmost Matching Principle）是指在使用组合索引时，查询条件中包含的列必须从组合索引的最左边开始，并且顺序一致，才能利用该索引。
 
 
 
-### NOT IN和NOT EXIST的区别？
+## 第九题：NOT IN和NOT EXIST的区别？
 
 
 
 
 
-### 事务的ACID是什么？
+## 第十题：事务的ACID是什么？
 
 **原子性（Atomicity）**： 事务是一个不可分割的工作单元，要么全部成功，要么全部失败。
 
@@ -315,7 +313,8 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 **幻读（Phantom Read）**：
 一个事务在执行两次相同的查询时，因为另一个并发事务的插入或删除操作，导致两次查询返回的结果集不同。
 
-### MySQL的隔离级别有哪些？
+
+## 第十一题：MySQL的隔离级别有哪些？
 
 四种隔离级别（`READ UNCOMMITTED`、`READ COMMITTED`、`REPEATABLE READ`、`SERIALIZABLE`）来控制事务的隔离性。默认隔离级别是 `REPEATABLE READ`。
 
@@ -326,15 +325,15 @@ FOREIGN KEY (parent_id) REFERENCES parent_table(id)
 
 
 
-### MySQL百万级数据分页要注意什么?
+## 第十二题：MySQL百万级数据分页要注意什么?
 
 
 
-### 简述MVCC机制
+## 第十三题：简述MVCC机制
 
 
 
-### 间隙锁是什么
+##  第十四题：间隙锁是什么
 
 
 
