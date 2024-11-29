@@ -287,20 +287,155 @@ constructor() {
 }
 ```
 
-### 16.智能合约值类型和引用类型有哪些？
+### 17.智能合约值类型和引用类型有哪些？
 
 
-### 17.变量，常量，不可变变量
+### 18.变量，常量，不可变变量区别与联系
 
 
-### 18.public, private, internal, external 分修饰函数和状态变量的区别
+### 19.public, private, internal, external 分修饰函数和状态变量的区别
 
 
+### 20 函数重写和函数重载
 
 
+### 21 view, pure, payable 和 virtual 修饰符的作用与区别
 
 
+### 22.函数事件抛出的原则
 
 
+### 23.父类和子类访问
+
+
+### 24.构造继承
+
+
+### 25.抽象合约和接口区别
+
+- 抽象合约：
+  - 已实现的函数
+  - 未实现的函数（需要由继承的子合约实现）
+  -  状态变量。
+- 接口: 接口是一种特殊的抽象合约，只包含未实现的函数。
+- 接口中不允许：
+  - 状态变量
+  - 构造函数
+  - 已实现的函数
+ 
+### 26.Override 定义，特点和作用
+
+
+### 27.require， assert 和 revert
+
+- require：用于输入验证和状态检查，失败时返回剩余 gas 并恢复状态。
+- assert：用于检测不变量和内部错误，失败时消耗所有剩余 gas 并恢复状态。
+- revert：用于显式抛出异常，支持携带错误信息，失败时返回剩余 gas 并恢复状态。
+
+### 28. 状态变量，局部变量和全局变量的定义与特点
+
+
+### 29.memory, storage， calldata 和 stack 的定义特点
+
+
+### 30.stack 深度问题
+
+
+### 31.说一说智能合约的内存布局
+
+
+### 32.代码题一
+
+V1 版本的合约, 运行很久了
+
+```
+contract A {
+   uint256 public A;
+   uint256 public B;
+}
+```
+
+V2 版本的合约
+
+```
+contract A {
+   uint256 public A;
+   uint256 public C;   
+   uint256 public B;
+}
+```
+
+- 上面做法是有问题，C 状态变量占用了 B 的 slot
+ 
+
+### 32.代码题二
+
+V1 版本的合约, 运行很久了
+
+```
+contract A {
+ struct AAA {
+     uint256 public A;
+     uint256 public B;   
+  }
+  uint256 public Z;
+  mapping(uint256=>AAA) ZZZ;
+  uint256 public C;
+  uint256 public D;
+}
+```
+
+V2 版本的合约
+
+```
+contract A {
+ struct AAA {
+     uint256 public A;
+     uint256 public B;
+     uint256 public X;
+     uint256 public Y;
+  }
+  uint256 public Z;
+  mapping(uint256=>AAA) ZZZ;
+  uint256 public C;
+  uint256 public D;
+}
+```
+
+- 上面做法没有问题
+
+### 32.代码题二
+
+V1 版本的合约, 运行很久了
+
+```
+contract A {
+ struct AAA {
+     uint256 public A;
+     uint256 public B;   
+  }
+  uint256 public Z;
+  AAA ZZZ;
+  uint256 public C;
+  uint256 public D;
+}
+```
+
+V2 版本的合约
+
+```
+contract A {
+ struct AAA {
+     uint256 public A;
+     uint256 public B;
+     uint256 public X;
+     uint256 public Y;
+  }
+  uint256 public Z;
+  AAA ZZZ;
+  uint256 public C;
+  uint256 public D;
+}
+```
 
 
