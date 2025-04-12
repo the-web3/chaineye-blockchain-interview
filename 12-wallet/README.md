@@ -685,4 +685,331 @@ Shamir共享秘密的本质和使用流程
 
 ## 82.大规模的批量提现
 
+## 83.假充值怎么解决
+
+假充值例子：
+- 伪造代币合约充值：部署假的代币合约，模仿ETH、USDT代币的名称和符号，但合约地址不一样。通过调用合约方法，直接修改目标钱包的余额显示。
+  - 解决方式：
+    - 钱包系统内有白名单地址，只有配置了白名单的合约，才能往交易所内充值；
+    - 代币充值，钱包也是有个token表来配置，只有配置了的代币才能往里面冲。
+- 虚假转账记录：通过伪造交易数据，让钱包显示收到一笔转账，但这笔交易并未发生在链上。
+  - 技术原理：
+    - 利用钱包软件的漏洞，直接修改本地显示数据（较少见，需用户使用被篡改的钱包）
+    - 或通过虚假节点返回伪造的区块链数据（针对未验证的 RPC 端点）
+  - 解决方式：使用一个RPC节点，来执行一笔转账交易，但不上链，看看能否成功，用来表明该账户是不是有充值这么多金额
+
+一般解决方式：
+- 通过区块链浏览器检查交易记录
+- 验证合约地址
+- 测试转账
+- 请求风控校验
+
+## 84.交易所资产证明，证明自己有钱
+
+- https://github.com/the-web3/chaineye-binance-por 币安的资产证明的整个项目概述
+
+## 85.私钥怎么和助记词对应，路径推导的协议怎么推导出来的
+
+如果是使用12个助记词的话，首先生成128位随机熵，然后进行SHA-256哈希计算得到哈希值，取出哈希值的前四位，拼接到随机熵后面。之后取每十一位来转换成10进制索引，从2048个单词里得到相应的助记词。
+然后使用PBKDF2基于密码的密钥派生函数，以助记词为入参，对助记词进行2028次哈希计算（HMAC-SHA512），得到512位（64字节）的Seed。
+
+种子生成后，通过BIP32标准推导主私钥和主链码：
+
+对种子使用HMAC-SHA512计算，得到主私钥（前32字节）和主链码（后32字节）
+
+## 86.怎么算solana多少cu，一个账户占多少字节
+
+## 87.Solana签名，怎么签 feepayer，两个签名怎么拼
+
+签名规则：
+- feePayer必须是第一个签名者
+- 其他签名者按accountKeys中需要签名的顺序排列
+- 签名者对消息部分（Message）的哈希进行签名
+问题场景：
+- 目标：feePayer使用私钥A签名，指令的发起者使用私钥B签名
+- 挑战：
+  - 默认情况下，Transaction.sign会用单一私钥签名所有需要签名的账户
+  - 需要分离签名过程，确保每个私钥只签名其对应的账户
+手动拼接步骤：
+- 构造交易信息：
+  - 使用@solana/web3.js创建交易并提取消息部分
+  - 设置feePayer和其他签名账户
+- 序列化消息：获取交易的Message部分并序列化，用于签名
+- 分别签名：
+  - 使用每个私钥对消息进行独立签名
+  - 确保签名顺序与accountKeys中需要签名的账户顺序一致
+- 拼接交易：将签名数组和消息部分手动合成完整的交易字节数组
+- 验证和发送：将拼接后的交易提交到网络
+
+```
+import { Connection, Keypair, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
+import { sign } from "@solana/web3.js/lib/ed25519"; // 手动签名工具
+
+const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+
+// 生成两个密钥对
+const feePayer = Keypair.generate(); // 支付费用的账户
+const sender = Keypair.generate();   // 转账发起者
+const recipient = Keypair.generate(); // 接收者
+
+async function createAndSignTransaction() {
+  // 构造交易
+  const tx = new Transaction();
+  const { blockhash } = await connection.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+  tx.feePayer = feePayer.publicKey;
+
+  // 添加转账指令
+  tx.add(
+    SystemProgram.transfer({
+      fromPubkey: sender.publicKey,
+      toPubkey: recipient.publicKey,
+      lamports: 1000000, // 1 SOL
+    })
+  );
+
+  // 编译消息（不签名）
+  const message = tx.compileMessage();
+  const serializedMessage = message.serialize();
+
+  // 分别签名
+  const feePayerSignature = sign(serializedMessage, feePayer.secretKey); // feePayer 签名
+  const senderSignature = sign(serializedMessage, sender.secretKey);     // sender 签名
+
+  // 手动拼接交易
+  const numSignatures = 2; // feePayer + sender
+  const signatures = [
+    feePayerSignature, // 第一个签名是 feePayer
+    senderSignature,   // 第二个签名是 sender
+  ];
+
+  // 创建完整的交易字节数组
+  const txBytes = Buffer.concat([
+    Buffer.from([numSignatures]), // 签名数量
+    ...signatures.map(sig => Buffer.from(sig)), // 签名数组
+    Buffer.from(serializedMessage), // 消息部分
+  ]);
+
+  // 转换为 base58 编码（可选，用于 RPC）
+  const base58 = require("bs58");
+  const encodedTx = base58.encode(txBytes);
+
+  // 模拟交易（验证）
+  const simulation = await connection.simulateTransaction(
+    Transaction.from(txBytes),
+    { commitment: "confirmed" }
+  );
+  console.log("Simulation Result:", simulation.value);
+
+  // 发送交易（需确保账户有足够 SOL）
+  // const signature = await connection.sendRawTransaction(txBytes);
+  // console.log("Transaction Signature:", signature);
+}
+
+createAndSignTransaction().catch(console.error);
+```
+构造交易消息：创建交易并设置 feePayer 和指令。
+序列化消息：提取交易的 Message 并序列化为字节数组。
+分别签名：使用每个私钥对消息签名。
+拼接交易：将签名和消息组合成完整交易。
+验证和发送：通过 RPC 模拟或提交交易。
+
+Golang实现方式：
+```
+package main
+
+import (
+        "context"
+        "fmt"
+        "log"
+
+        "github.com/gagliardetto/solana-go"
+        "github.com/gagliardetto/solana-go/programs/system"
+        "github.com/gagliardetto/solana-go/rpc"
+        "github.com/gagliardetto/solana-go/text"
+)
+
+func main() {
+        // 初始化 RPC 客户端
+        client := rpc.New("https://api.devnet.solana.com")
+
+        // 生成密钥对
+        feePayer, err := solana.NewRandomPrivateKey()
+        if err != nil {
+                log.Fatalf("Failed to generate feePayer key: %v", err)
+        }
+        sender, err := solana.NewRandomPrivateKey()
+        if err != nil {
+                log.Fatalf("Failed to generate sender key: %v", err)
+        }
+        recipient := solana.NewWallet().PublicKey()
+
+        fmt.Printf("FeePayer: %s\n", feePayer.PublicKey())
+        fmt.Printf("Sender: %s\n", sender.PublicKey())
+        fmt.Printf("Recipient: %s\n", recipient)
+
+        // 获取最近区块哈希
+        ctx := context.Background()
+        recent, err := client.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
+        if err != nil {
+                log.Fatalf("Failed to get recent blockhash: %v", err)
+        }
+
+        // 构造交易
+        tx := solana.NewTransactionBuilder().
+                SetFeePayer(feePayer.PublicKey()).
+                SetRecentBlockHash(recent.Value.Blockhash).
+                AddInstruction(
+                        system.NewTransferInstruction(
+                                1000000, // 1 SOL
+                                sender.PublicKey(),
+                                recipient,
+                        ).Build(),
+                )
+
+        // 编译消息（不签名）
+        message, err := tx.Build()
+        if err != nil {
+                log.Fatalf("Failed to build message: %v", err)
+        }
+
+        // 序列化消息
+        serializedMessage, err := message.MarshalBinary()
+        if err != nil {
+                log.Fatalf("Failed to serialize message: %v", err)
+        }
+
+        // 分别签名
+        feePayerSig, err := feePayer.Sign(serializedMessage)
+        if err != nil {
+                log.Fatalf("Failed to sign with feePayer: %v", err)
+        }
+        senderSig, err := sender.Sign(serializedMessage)
+        if err != nil {
+                log.Fatalf("Failed to sign with sender: %v", err)
+        }
+
+        // 拼接交易
+        signatures := []solana.Signature{feePayerSig, senderSig}
+        completeTx := &solana.Transaction{
+                Signatures: signatures,
+                Message:    *message,
+        }
+
+        // 序列化为字节数组（可选，用于手动检查）
+        txBytes, err := completeTx.MarshalBinary()
+        if err != nil {
+                log.Fatalf("Failed to marshal transaction: %v", err)
+        }
+
+        // 模拟交易
+        simResult, err := client.SimulateTransactionWithOpts(
+                ctx,
+                completeTx,
+                &rpc.SimulateTransactionOpts{
+                        SigVerify:              false, // 不验证签名（测试用）
+                        Commitment:             rpc.CommitmentFinalized,
+                        ReplaceRecentBlockhash: false,
+                },
+        )
+        if err != nil {
+                log.Fatalf("Failed to simulate transaction: %v", err)
+        }
+
+        // 输出结果
+        if simResult.Value.Err != nil {
+                fmt.Printf("Simulation failed: %v\n", simResult.Value.Err)
+        } else {
+                fmt.Printf("Simulation succeeded:\n")
+                fmt.Printf("Units Consumed: %d\n", simResult.Value.UnitsConsumed)
+                for _, log := range simResult.Value.Logs {
+                        fmt.Println(log)
+                }
+        }
+
+        // 发送交易（需确保账户有资金）
+        // sig, err := client.SendTransaction(ctx, completeTx)
+        // if err != nil {
+        //         log.Fatalf("Failed to send transaction: %v", err)
+        // }
+        // fmt.Printf("Transaction Signature: %s\n", sig)
+}
+```
+
+## 88.哈希环是不是一致性hash算法？
+
+
+## 89.布隆过滤器，怎么避免误判？
+
+
+## 90.工作中有没有遇到资金损失，或者系统故障，怎么解决的
+
+
+## 91.提现成功率多少
+
+
+## 92.每条链，每天多少笔
+
+
+## 93.钱包对账怎么做的
+
+
+## 93.BTC粉尘资金多少
+- P2PKH 546聪
+- P2SH 828聪
+- P2WPKH 270聪
+- P2WSH 417聪
+- P2TR 276聪
+
+## 94.Solana匹配交易的时候，lookup account什么时候用
+
+
+## 95.比特币usdt怎么实现的？
+比特币原生不支持发行代币，USDT 是通过Omni Layer 协议在比特币之上“搭建了一层”，来实现“代币发行和转账”的。
+- blockchain-wallet/Omni/README.md at master · the-web3/blockchain-wallet
+- https://github.com/OmniLayer/spec
+
+## 96.BTC你们怎么使用账本的，提现时使用哪种账本，怎么做
+- 提现时，通过最小化找零算法，来找一个金额相似的账本用来提现
+
+## 97.不同layer2有些用的debug_traceTransaction，有些不支持，你们用的什么或者你知道接口名字吗
+
+- 支持debug_traceTransaction的链：Optimism、Arbitrum、Polygon PoS
+- 不支持的链：
+  - zkSync：使用zks_getTransactionDetails接口
+
+## 98.solana使用getblock接口，里面encoding参数json、jsonParsed有什么区别？
+
+
+## 99.钱包导入助记词，有些钱包就把我不同地址资产识别出来了，怎么做的
+
+## 100.一个私钥，在一个spl-token里面可以有几个 ata 账户
+
+## 100.BTC getBlock接口
+
+## 101.如何验证一笔交易是合法的。在RPC节点里面是否可以验证？如果可以的话，RPC节点是如何验证这个交易是合法的（具体验证哪些字段）
+
+## 102.如何节省gas费？从数据结构设计的角度展开说说？
+
+## 103.调用ec2的服务器被黑了咋办
+
+## 104.温钱包，多签（你们温钱包怎么实现的）
+
+## 105.你们这个签名机方案如果是业务层被端了，你们咋办
+
+## 106.讲一下cosmos的特点
+
+## 107.说明下solana的ata账户
+
+## 108.归集的时候问了下手续费的计算
+
+## 109.token 归集的时候需要注意哪些
+
+## 110.BTC 提现的时候，用哪个账本算法？引出问题：BTC提现的时候，不都是已经归集了吗？为啥还要考虑这个算法
+
+## 111.有没有遇到过，提现的时候没有，还有一些用户资金还没有归集，那么你们是如何处理的呢？
+
+## 112.你们钱包和风控的交互是咋么样的？请具体描述一下
+
+
 
